@@ -447,8 +447,8 @@ def main():
         }
 
         if args.expires is not None:
-            meta['expires'] = (now + dateutil.relativedelta.relativedelta(seconds=args.expires)).isoformat()
-            snapshot_params['expires'] = args.expires
+            meta['expires'] = (now + dateutil.relativedelta.relativedelta(seconds=int(args.expires))).isoformat()
+            snapshot_params['expires'] = int(args.expires)
 
         if args.action == 'generate':
 
@@ -549,7 +549,7 @@ def main():
 
             if args.expires is not None:
                 # meta['expires'] = (now + dateutil.relativedelta.relativedelta(seconds=args.expires)).isoformat()
-                params['expires'] = args.expires
+                params['expires'] = int(args.expires)
             try:
                 res = grafana_api.insert_snapshot( **params )
                 if res:

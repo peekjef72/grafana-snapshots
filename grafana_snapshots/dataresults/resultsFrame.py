@@ -101,7 +101,15 @@ class resultsFrame(resultsBase):
 
         # required format is time_series:
         if self.format == 'time_series':
-            for refid_key, refId in self.results['results'].items():
+            for target in targets:
+                if 'hide' in target and target['hide']:
+                    continue
+                refid_key = target['refId']
+                if refid_key not in self.results['results']:
+                    self.logger.Warning("refid_key not")
+                    continue
+                refId = self.results['results'][refid_key]
+            # for refid_key, refId in self.results['results'].items():
 
                 #* the result contains an error
                 if 'error' in refId:
@@ -128,17 +136,24 @@ class resultsFrame(resultsBase):
                     values_info = frame['schema']['fields'][1]
 
                     value_part.update( {
-                        'labels': values_info['labels'],
                         'name': values_info['name'],
                         'type': values_info['type'],
                         'values': values
                     } )
+                    labels = None
+                    if 'labels' in values_info:
+                        labels = values_info['labels']
+                        value_part["labels"] = labels
+
                     # extract metric name from the result frame
                     if 'config' in values_info and 'displayNameFromDS' in values_info['config']:
                         name = values_info['config']['displayNameFromDS']
                         value_part['config']['displayNameFromDS'] = name
                     else:
-                        value_part['config']['displayNameFromDS'] = self.buildLegend(values_info["labels"])
+                        if labels is not None:
+                            value_part['config']['displayNameFromDS'] = self.buildLegend(labels)
+                        else:
+                            value_part['config']['displayNameFromDS'] = frame['schema']["refId"]
 
                     #** build snapshotDataObj for the current timeseries
                     if ts_part is not None and value_part is not None:
@@ -161,7 +176,15 @@ class resultsFrame(resultsBase):
         # each frame represents a data line
         # one line has columns which are timestamp, [ labels_values ], values
         elif self.format == 'table':
-            for refid_key, refId in self.results['results'].items():
+            for target in targets:
+                if 'hide' in target and target['hide']:
+                    continue
+                refid_key = target['refId']
+                if refid_key not in self.results['results']:
+                    self.logger.Warning("refid_key not")
+                    continue
+                refId = self.results['results'][refid_key]
+            # for refid_key, refId in self.results['results'].items():
                 snapshotDataObj = {}
                 fields_names = {}
                 # for idx, frame in refId['frames'].items():

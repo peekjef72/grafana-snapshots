@@ -241,7 +241,7 @@ class GrafanaData(object):
         return int(datetime.now().astimezone().utcoffset().total_seconds())
 
    #***********************************************
-    def get_query_from_datasource(self, datasource, target, panel=None):
+    def get_query_from_datasource(self, datasource, target, request=None, panel=None):
 
         if 'type' not in datasource:
             return None
@@ -292,6 +292,7 @@ class GrafanaData(object):
             if 'query' in target:
                 expr = target['query']
 
+        new_req = None
         if expr is not None:
             # check if target expr contains variable ($var)
             m =  GrafanaData.varfinder.search(expr)
@@ -305,8 +306,17 @@ class GrafanaData(object):
             params['time_from'] = self.time_from
             params['intervalMS'] = self.step
 
-            request = query_factory(datasource, params)
+            new_req = query_factory(datasource, params)
+        elif "datasource" in target and target["datasource"]['type'] == '__expr__':
+            params = copy.deepcopy( target )
+            params["window"] = ""
+            if request is not None:
+                request["data"]["queries"].append(params)
 
+        if request is None:
+            request = new_req
+        elif new_req is not None:
+            request["data"]["queries"].append(*new_req["data"]["queries"])
         return request
 
     #***********************************************
@@ -353,11 +363,8 @@ class GrafanaData(object):
                 if (datasource is not None or dtsrc == '-- Mixed --' ) and targets is not None:
 
                     # self.logger.debug('dt: {0}'.format(datasources[dtsrc]))
+                    request = None
                     for target in targets:
-                        # don't collect data for disabled queries
-                        if 'hide' in target and target['hide']:
-                            continue
-
                         if dtsrc == '-- Mixed --' and 'datasource' in target:
                             datasource = self.get_datasource(target['datasource'])
                             if datasource is not None:
@@ -370,14 +377,14 @@ class GrafanaData(object):
                         if not datasource and self.logger is not None:
                             self.logger.warning("datasource '{0}' was not found".format(datasource_name))
                             continue
-
-                        request = self.get_query_from_datasource(datasource, target)
+                        request = self.get_query_from_datasource(datasource, target, request=request)
                         if request is None and self.logger is not None:
                             self.logger.warning("query type '{0}' not supported".format(datasource['type']))
                             continue
 
                         if self.debug:
                             self.logger.debug("query datasource proxy uri: {0}".format(request))
+                    if request is not None:
 
                         try:
                             content = self.api.smartquery(datasource, request)
@@ -461,7 +468,7 @@ class GrafanaData(object):
                             panel=panel,
                             logger=self.logger
                         )
-                        snapshotData = dataRes.get_snapshotData(target)
+                        snapshotData = dataRes.get_snapshotData(targets)
 
                         # if 'data' in content:
                         #    if query_type == 'query_range':
